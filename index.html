@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NWS Live Control Center & Test Bench</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            background: #091724;
+            color: #00ff66;
+            padding: 12px;
+        }
+        header {
+            background: #040d14;
+            border: 2px solid #00ff66;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+            border-radius: 6px;
+        }
+        .stats-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(9, 23, 36, 0.9);
+            border: 1px solid #00ff66;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            text-align: right;
+            line-height: 1.4;
+        }
+        @media (max-width: 600px) {
+            .stats-badge {
+                position: static;
+                margin: 10px auto 0 auto;
+                text-align: center;
+                display: inline-block;
+            }
+        }
+        .mode-selector {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+        }
+        .mode-btn {
+            flex: 1;
+            background: #040d14;
+            color: #58a6ff;
+            border: 1px solid #30363d;
+            padding: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            border-radius: 5px;
+            text-transform: uppercase;
+        }
+        .mode-btn.active {
+            background: #00ff66;
+            color: #040d14;
+            border-color: #00ff66;
+            box-shadow: 0 0 10px rgba(0,255,102,0.3);
+        }
+        .panel {
+            background: #040d14;
+            border: 1px solid #00ff66;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 12px 0;
+            display: none;
+        }
+        .panel.visible {
+            display: block;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+        }
+        .big { font-size: 38px; font-weight: bold; color: #fff; }
+        .alert-banner { background: #5c0b16; padding: 12px; border-radius: 5px; border: 1px solid #ff3333; margin-bottom: 12px; display: none; color: #fff; }
+        
+        /* Category specific borders */
+        .cat-box {
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            background: #07121c;
+            margin-bottom: 15px;
+        }
+        .cat-box.warning-cat { border-color: #ff3333; }
+        .cat-box.watch-cat { border-color: #ffcc00; }
+        .cat-box.advisory-cat { border-color: #3399ff; }
+        
+        .cat-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .warning-title { color: #ff3333; }
+        .watch-title { color: #ffcc00; }
+        .advisory-title { color: #3399ff; }
+
+        input, select, textarea {
+            width: 100%; background: #091724; border: 1px solid #00ff66; color: #00ff66; padding: 10px; border-radius: 4px; box-sizing: border-box; margin-bottom: 15px; font-family: inherit;
+        }
+        .search-results { max-height: 150px; overflow-y: auto; border: 1px solid #00ff66; background: #040d14; margin-top: -15px; margin-bottom: 15px; display: none; }
+        .search-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #091724; }
+        .search-item:hover { background: #00ff66; color: #040d14; font-weight: bold; }
+        
+        button.action-btn {
+            width: 100%; padding: 14px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-family: inherit; border: none; margin-bottom: 8px;
+        }
+        .btn-start { background: #00ff66; color: #040d14; }
+        .btn-start:hover { background: #33ff88; box-shadow: 0 0 10px #00ff66; }
+        .btn-stop { background: #ff3333; color: white; }
+        .btn-stop:hover { background: #ff5555; box-shadow: 0 0 10px #ff3333; }
+        .status-display { text-align: center; font-weight: bold; padding: 10px; border: 1px dashed #00ff66; background: #040d14; margin-top: 10px; }
+        iframe { width: 100%; height: 350px; border: 0; border-radius: 6px; margin-top: 8px; }
+        a { color: #58a6ff; }
+        .muted { color: #8b949e; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="stats-badge">
+            🟢 Active Now: <span id="active-users">1</span><br>
+            👥 Total Visits: <span id="total-visits">Loading...</span>
+        </div>
+        <h1>📡 NWS Command Console</h1>
+        <p>Helena, MT Station Management System</p>
+    </header>
+
+    <div class="mode-selector">
+        <button id="mode1-btn" class="mode-btn active" onclick="switchMode(1)">📊 Live Dashboard</button>
+        <button id="mode2-btn" class="mode-btn" onclick="switchMode(2)">🛠️ Radio Test Bench</button>
+    </div>
+
+    <!-- MODE 1: REAL WORLD LIVE REPORT DASHBOARD LAYOUT -->
+    <div id="panel-dashboard" class="panel visible">
+        <div id="topAlert" class="alert-banner">Checking active weather alerts...</div>
+        <div class="grid">
+            <div style="background:#040d14; border:1px solid #58a6ff; padding:15px; border-radius:6px;">
+                <h3 style="color:#58a6ff; margin-top:0;">Current Conditions</h3>
+                <div id="current-weather">Loading...</div>
+                <div id="weather-metrics" style="margin-top:10px; line-height:1.5;"></div>
+                <p id="time-stamp" class="muted"></p>
+            </div>
+            <div style="background:#040d14; border:1px solid #ff3333; padding:15px; border-radius:6px;">
+                <h3 style="color:#ff3333; margin-top:0;">⚠️ Regional Hazard Desk</h3>
+                <div id="live-alerts">Scanning data fields...</div>
+            </div>
+        </div>
+        <div style="background:#040d14; border:1px solid #30363d; padding:15px; border-radius:6px; margin-top:12px;">
+            <h3 style="margin-top:0; color:#fff;">🔮 4-Period Forecast Matrix</h3>
+            <div id="forecast-grid" class="grid">Loading timeline data...</div>
+        </div>
+        <div style="background:#040d14; border:1px solid #30363d; padding:15px; border-radius:6px; margin-top:12px;">
+            <h3 style="margin-top:0; color:#fff;">🗺️ NWS Radar Feed</h3>
+            <iframe title="NWS Radar" src="https://weather.gov"></iframe>
+        </div>
+    </div>
+
+    <!-- MODE 2: CATEGORIZED RADIO ALERT TRANSMITTER GENERATOR BENCH -->
+    <div id="panel-tester" class="panel">
+        <!-- Global Search across all groupings -->
+        <label for="alert-search">🔍 Global Search Alert Categories:</label>
+        <input type="text" id="alert-search" placeholder="Type warning, watch, or advisory keywords..." oninput="filterAlerts()">
+        <div id="search-results-box" class="search-results"></div>
+
+        <div class="grid">
+            <!-- Warning Dropdown Group -->
+            <div class="cat-box warning-cat">
+                <div class="cat-title warning-title">🔴 Warnings (Take Action)</div>
+                <select id="warning-selector" onchange="syncSelectedTemplate('warning')"></select>
+            </div>
+
+            <!-- Watch Dropdown Group -->
+            <div class="cat-box watch-cat">
+                <div class="cat-title watch-title">🟡 Watches (Be Prepared)</div>
+                <select id="watch-selector" onchange="syncSelectedTemplate('watch')"></select>
+            </div>
+
+            <!-- Advisory Dropdown Group -->
+            <div class="cat-box advisory-cat">
+                <div class="cat-title advisory-title">🔵 Advisories (Be Aware)</div>
+                <select id="advisory-selector" onchange="syncSelectedTemplate('advisory')"></select>
+            </div>
+        </div>
+
+        <label for="broadcast-script">🎙️ Transmitter Voice Transcript Payload:</label>
+        <textarea id="broadcast-script" rows="5"></textarea>
+
+        <div class="mode-selector">
+            <button class="action-btn btn-start" onclick="fireTestSequence()">▶️ Play Alert</button>
+            <button class="action-btn btn-stop" onclick="killTransmitterAudio()">🛑 Stop Alert</button>
+        </div>
+        <div id="bench-status" class="status-display">HARDWARE CARRIER SLEEP // AWAITING PROTOCOL</div>
+    </div>
+
+    <p class="muted" style="text-align:center; margin-top:20px;">Data interface connections routed via NOAA NWS API pipelines. Platform system independently maintained.</p>
+
+<script>
+    let lat = 46.5927, lon = -112.0361;
+    let audioCtx = null, toneOsc = null, toneGain = null, loopTimer = null;
+
+    // Comprehensive Database Split by NWS Severity Categorizations
+    const alertLookupTable = [
+        { name: "Tornado Warning", category: "warning", text: "The National Weather Service has issued a Tornado Warning. A confirmed tornado is tracking through the sector. Take immediate underground or interior shelter now. Avoid all window boundaries." },
+        { name: "Severe Thunderstorm Warning", category: "warning", text: "The National Weather Service has issued a Severe Thunderstorm Warning. Damaging wind patterns exceeding sixty miles per hour and large hail structures are entering this sector. Seek indoor safety." },
+        { name: "Flash Flood Warning", category: "warning", text: "The National Weather Service has issued a Flash Flood Warning. Severe downpours are generating dangerous runoff torrents across regional highways and low drainage basins. Do not drive across flooded paths." },
